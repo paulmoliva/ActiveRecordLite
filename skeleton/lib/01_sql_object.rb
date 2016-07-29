@@ -48,13 +48,22 @@ class SQLObject
     result
     # ...
   end
-
+  require 'byebug'
   def self.find(id)
-    # ...
+    result = DBConnection.execute(<<-SQL, id)
+      SELECT
+        *
+      FROM
+        #{self.table_name}
+      WHERE
+        #{self.table_name}.id = ?
+    SQL
+    return nil if result.empty?
+    object = send("new", result.first)
   end
 
   def initialize(params = {})
-    keys = params.keys.map(&:to_sym)
+    keys = params.keys#.map(&:to_sym)
     keys.each do |k|
       raise "unknown attribute '#{k}'" unless self.class.columns.include?(k.to_sym)
       send("#{k}=", params[k])
@@ -66,18 +75,39 @@ class SQLObject
   end
 
   def attribute_values
-    # ...
+    #byebug
+    self.class.columns.map{|el| send("#{el}")}
   end
 
   def insert
-    # ...
+    col_names = self.class.columns.join(',')
+    question_marks = (['?'] * self.class.columns.length)
+    DBConnection.execute(<<-SQL, *attribute_values)
+      INSERT INTO
+        #{self.class.table_name} (#{col_names})
+      VALUES
+        (#{question_marks.join(',')})
+    SQL
+    attributes[:id] = DBConnection.last_insert_row_id
   end
 
   def update
-    # ...
+    set_line = self.class.columns.map{|n| "#{n.to_s} = ?"}.join(',')
+    DBConnection.execute(<<-SQL, *attribute_values)
+      UPDATE
+        #{self.class.table_name}
+      SET
+        #{set_line}
+      WHERE
+        id = #{attributes[:id]}
+    SQL
   end
 
   def save
-    # ...
+    if attributes[:id].nil?
+      insert
+    else
+      update
+    end
   end
 end
