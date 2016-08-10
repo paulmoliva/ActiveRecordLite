@@ -1,9 +1,13 @@
 require_relative 'db_connection'
+require_relative '02_searchable'
+require_relative '03_associatable'
 require 'active_support/inflector'
 # NB: the attr_accessor we wrote in phase 0 is NOT used in the rest
 # of this project. It was only a warm up.
 
 class SQLObject
+  extend Searchable
+  extend Associatable
   def self.columns
     @cols ||= DBConnection.execute2(<<-SQL)
       SELECT
